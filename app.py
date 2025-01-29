@@ -1,56 +1,66 @@
-from flask import Flask, render_template, request, jsonify, url_for
+import streamlit as st
 import speech_recognition as sr
 import pyttsx3
-from speech_recognition import Recognizer, Microphone, WaitTimeoutError, UnknownValueError, RequestError
+import json
 
-app = Flask(__name__)
-
+# Text to Speech function
 def text_to_speech(text):
-    """
-    Converts the given text to speech.
-    """
     engine = pyttsx3.init()
-    engine.setProperty('rate', 150)  # Adjust the speaking speed
-    engine.setProperty('volume', 1.0)  # Adjust volume (0.0 to 1.0)
+    engine.setProperty('rate', 150)
+    engine.setProperty('volume', 1.0)
     engine.say(text)
     engine.runAndWait()
 
+# Speech to Text function
 def speech_to_text():
-    """
-    Converts speech to text using a microphone input.
-    """
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        print("Listening... Speak now!")
+        st.write("Listening... Speak now!")
         try:
-            recognizer.adjust_for_ambient_noise(source)  # Reduce noise
+            recognizer.adjust_for_ambient_noise(source)
             audio = recognizer.listen(source, timeout=10, phrase_time_limit=15)
-            print("Processing...")
             text = recognizer.recognize_google(audio)
-            print(f"You said: {text}")
+            st.write(f"You said: {text}")
             return text
         except sr.WaitTimeoutError:
-            print("Listening timed out. No speech detected.")
-            return "Listening timed out. Please try again."
+            return "Listening timed out."
         except sr.UnknownValueError:
-            return "Sorry, I could not understand the audio."
+            return "Sorry, could not understand."
         except sr.RequestError as e:
-            return f"Error with the recognition service: {e}"
+            return f"Error: {e}"
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Frontend HTML with buttons and inputs (using Streamlit components)
+st.markdown("""
+    <html>
+    <head>
+        <script type="text/javascript" src="static/script.js"></script>
+        <link rel="stylesheet" href="static/styles.css">
+    </head>
+    <body>
+        <h1>Speech to Text & Text to Speech</h1>
+        
+        <!-- Text-to-Speech Section -->
+        <div>
+            <input id="text-to-speech-input" type="text" placeholder="Enter text to convert to speech">
+            <button id="text-to-speech-btn">Speak</button>
+        </div>
 
-@app.route('/text_to_speech', methods=['POST'])
-def convert_text_to_speech():
-    text = request.json['text']
-    text_to_speech(text)
-    return jsonify({'message': 'Speech played successfully'})
+        <!-- Speech-to-Text Section -->
+        <div>
+            <button id="speech-to-text-btn">Start Listening</button>
+            <textarea id="speech-output" placeholder="Speech output will appear here"></textarea>
+        </div>
+    </body>
+    </html>
+""", unsafe_allow_html=True)
 
-@app.route('/speech_to_text', methods=['POST'])
-def convert_speech_to_text():
-    text = speech_to_text()
-    return jsonify({'text': text})
+# Define routes (you'll use Streamlit buttons instead of actual routing)
+if st.button("Start Speech Recognition"):
+    speech_text = speech_to_text()
+    st.text(speech_text)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if st.button("Convert Text to Speech"):
+    user_input = st.text_input("Enter Text for Speech Conversion:")
+    if user_input:
+        text_to_speech(user_input)
+        st.success("Text to speech conversion completed!")
